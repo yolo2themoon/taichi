@@ -25,7 +25,7 @@ bool KernelProfilerCUDA::init_profiler(KernelProfilingMode &profiling_mode) {
   if (profiling_type == KernelProfilingTool::cuevent) {
     tool_ = KernelProfilingTool::cuevent;
     mode_ = KernelProfilingMode::enable;
-    TI_TRACE("KernelProfilingTool::cuevent : enable");
+    TI_TRACE("KernelProfilingTool::cuevent");
     TI_TRACE("profiler_type : {}", tool_);
     profiling_mode = mode_;
     return true;
@@ -44,14 +44,34 @@ bool KernelProfilerCUDA::init_profiler(KernelProfilingMode &profiling_mode) {
     tool_ = KernelProfilingTool::cuevent;
     mode_ = KernelProfilingMode::enable;
 
-    TI_TRACE("KernelProfilingTool::cuevent : enable");
+    TI_TRACE("KernelProfilingTool::cuevent");
     TI_TRACE("profiler_type : {}", tool_);
     profiling_mode = mode_;
     return true;
   }
 #else
-  // TODO::CUPTI_PROFILER
-  TI_INFO("TODO::CUPTI_PROFILER");
+  void *device;
+  int cc_major;
+  CUDADriver::get_instance().device_get(&device, 0);
+  CUDADriver::get_instance().device_get_attribute(
+      &cc_major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device);
+  if(cc_major<7){
+    TI_WARN("CUPTI profiler APIs unsupported on Device with compute capability < 7.0 , fallback to normal kernel profiler");
+    tool_ = KernelProfilingTool::cuevent;
+    mode_ = KernelProfilingMode::enable;
+    TI_TRACE("KernelProfilingTool::cuevent");
+    TI_TRACE("profiling_mode : {}", mode_);
+    profiling_mode = mode_;
+    return true;
+  }
+  else{
+    // enbale cupti profiler
+    tool_ = KernelProfilingTool::cupti;
+    mode_ = profiling_mode;
+    TI_TRACE("KernelProfilingTool : cupti");
+    TI_TRACE("profiler_type : {}", mode_);
+    return true;
+  }
 #endif
 }
 
@@ -140,7 +160,7 @@ std::string KernelProfilerCUDA::title() const {
     return "cuEvent Profiler";
   else if (tool_ == KernelProfilingTool::cupti) {
     std::string mode_string = mode_ == KernelProfilingMode::cupti_onepass
-                                  ? "accurate mode"
+                                  ? "onepass mode"
                                   : "detailed mode";
     return "nvCUPTI Profiler :: " + mode_string;
   }
