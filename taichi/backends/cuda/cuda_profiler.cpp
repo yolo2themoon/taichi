@@ -17,12 +17,12 @@ bool KernelProfilerCUDA::init_profiler(KernelProfilingMode &profiling_mode) {
     return false;
   }
 
-  KernelProfilingTool profiling_type =
+  KernelProfilingTool profiling_tool =
       (profiling_mode == KernelProfilingMode::enable)
           ? KernelProfilingTool::cuevent
           : KernelProfilingTool::cupti;
 
-  if (profiling_type == KernelProfilingTool::cuevent) {
+  if (profiling_tool == KernelProfilingTool::cuevent) {
     tool_ = KernelProfilingTool::cuevent;
     mode_ = KernelProfilingMode::enable;
     TI_TRACE("KernelProfilingTool::cuevent");
@@ -32,7 +32,7 @@ bool KernelProfilerCUDA::init_profiler(KernelProfilingMode &profiling_mode) {
   }
 
 #if !defined(TI_WITH_TOOLKIT_CUDA)
-  if (profiling_type == KernelProfilingTool::cupti) {
+  if (profiling_tool == KernelProfilingTool::cupti) {
     TI_WARN(
         "CUPTI toolkit is not compiled with taichi, fallback to cuEvent kernel "
         "profiler");
