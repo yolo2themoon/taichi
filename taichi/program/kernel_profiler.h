@@ -16,6 +16,10 @@ struct KernelProfileTracedRecord {
   std::string name;
   float kernel_elapsed_time_in_ms{0.0};
   float time_since_base{0.0};  // for Timeline
+#if defined(TI_WITH_CUDA_TOOLKIT)
+  float memory_load_byets{0.0};
+  float memory_store_byets{0.0};
+#endif
 };
 
 struct KernelProfileStatisticalResult {
@@ -83,6 +87,6 @@ class KernelProfilerBase {
   }
 };
 
-std::unique_ptr<KernelProfilerBase> make_profiler(Arch arch);
+std::unique_ptr<KernelProfilerBase> make_profiler(Arch arch, bool enable);
 
 TLANG_NAMESPACE_END

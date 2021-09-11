@@ -21,18 +21,23 @@ bool check_device_capability() {
   return true;
 }
 
-KernelProfilerCUDA::KernelProfilerCUDA() {
-// if Taichi was compiled with CUDA toolit, then use CUPTI
-// TODO : add set_mode() to select toolkit by user
+KernelProfilerCUDA::KernelProfilerCUDA(bool enable) {
+  if(enable){
+    tool_ = ProfilingToolkit::event;
 #if defined(TI_WITH_CUDA_TOOLKIT)
-  if (check_device_capability())
-    tool_ = ProfilingToolkit::cupti;
+// if Taichi was compiled with CUDA toolit, then use CUPTI
+// TODO : add set_mode() to select toolkit (by user)
+    if (check_device_capability())
+      tool_ = ProfilingToolkit::cupti;
 #endif
+  }
 
   if (tool_ == ProfilingToolkit::event) {
     event_toolkit_ = std::make_unique<EventToolkit>();
-  } else if (tool_ == ProfilingToolkit::cupti) {
+  } else if (tool_ == ProfilingToolkit::cupti) { 
     cupti_toolkit_ = std::make_unique<CuptiToolkit>();
+    cupti_toolkit_->init_cupti();
+    cupti_toolkit_->begin_profiling();
   }
 }
 
@@ -43,11 +48,13 @@ KernelProfilerBase::TaskHandle KernelProfilerCUDA::start_with_handle(
 }
 
 void KernelProfilerCUDA::trace(KernelProfilerBase::TaskHandle &task_handle,
-                               const std::string &task_name) {
+                               const std::string &task_name) {                      
   if (tool_ == ProfilingToolkit::event)
     task_handle = event_toolkit_->start_with_handle(task_name);
   else if (tool_ == ProfilingToolkit::cupti) {
-    TI_NOT_IMPLEMENTED;
+    KernelProfileTracedRecord record;
+    record.name = task_name;
+    traced_records_.push_back(record);
   }
 }
 
@@ -85,7 +92,7 @@ void KernelProfilerCUDA::sync() {
     statistics_on_traced_records();
     event_toolkit_->clear();
   } else if (tool_ == ProfilingToolkit::cupti) {
-    cupti_toolkit_->calculate_metric_values();
+    cupti_toolkit_->update_record(traced_records_);
     statistics_on_traced_records();
     cupti_toolkit_->end_profiling();
     cupti_toolkit_->deinit_cupti();
@@ -133,7 +140,7 @@ void KernelProfilerCUDA::clear() {
 
 #else
 
-KernelProfilerCUDA::KernelProfilerCUDA() {
+KernelProfilerCUDA::KernelProfilerCUDA(bool enable) {
   TI_NOT_IMPLEMENTED;
 }
 KernelProfilerBase::TaskHandle KernelProfilerCUDA::start_with_handle(
