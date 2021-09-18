@@ -16,8 +16,8 @@ namespace {
 
 // TODO : bit_and, bit_or, bit_xor
 bool is_atomic_op_linear(AtomicOpType op_type) {
-  return op_type == AtomicOpType::add || op_type == AtomicOpType::sub ||
-         op_type == AtomicOpType::min || op_type == AtomicOpType::max;
+  return op_type == AtomicOpType::add || op_type == AtomicOpType::max;
+        //  op_type == AtomicOpType::min || op_type == AtomicOpType::max;
 }
 
 // Find the destinations of global atomic reductions that can be demoted into
@@ -26,6 +26,9 @@ template <typename T>
 std::vector<T *> find_global_reduction_destinations(
     OffloadedStmt *offload,
     const std::function<bool(T *)> &dest_checker) {
+  
+  TI_INFO("find_global_reduction_destinations");
+
   static_assert(std::is_same_v<T, GlobalPtrStmt> ||
                 std::is_same_v<T, GlobalTemporaryStmt>);
   // Gather all atomic adds/subs destinations
@@ -49,6 +52,8 @@ std::vector<T *> find_global_reduction_destinations(
         }
         return false;
       });
+  
+  TI_INFO("atomic_destinations = {}",atomic_destinations.size());
 
   std::vector<T *> valid_reduction_values;
   for (auto dest : atomic_destinations) {
@@ -85,6 +90,9 @@ std::vector<T *> find_global_reduction_destinations(
       valid_reduction_values.push_back(dest);
     }
   }
+
+  TI_INFO("valid_reduction_values = {}",valid_reduction_values.size());
+
   return valid_reduction_values;
 }
 
@@ -95,6 +103,7 @@ void make_thread_local_offload(OffloadedStmt *offload) {
 
   std::vector<Stmt *> valid_reduction_values;
   {
+    
     auto valid_global_ptrs = find_global_reduction_destinations<GlobalPtrStmt>(
         offload, [](GlobalPtrStmt *dest) {
           // We can only optimized reductions to global ptrs with form like
@@ -104,14 +113,18 @@ void make_thread_local_offload(OffloadedStmt *offload) {
                  dest->indices.empty() &&
                  dest->snodes[0]->dt->is<PrimitiveType>();
         });
+    TI_INFO("valid_global_ptrs = {}", valid_global_ptrs.size());
+    
     auto valid_global_tmps =
         find_global_reduction_destinations<GlobalTemporaryStmt>(
             offload, [](auto *) { return true; });
+    TI_INFO("valid_global_tmps = {}", valid_global_tmps.size());
     std::copy(valid_global_ptrs.begin(), valid_global_ptrs.end(),
               std::back_inserter(valid_reduction_values));
     std::copy(valid_global_tmps.begin(), valid_global_tmps.end(),
               std::back_inserter(valid_reduction_values));
   }
+  TI_INFO("valid_reduction_values = {}", valid_reduction_values.size());
 
   std::size_t tls_offset = 0;
 
@@ -169,10 +182,11 @@ void make_thread_local_offload(OffloadedStmt *offload) {
           std::unique_ptr<Stmt>(
               (Stmt *)irpass::analysis::clone(dest).release()),
           -1);
-      offload->tls_epilogue->insert(
-          AtomicOpStmt::make_for_reduction(AtomicOpType::add, global_ptr,
-                                           tls_load),
-          -1);
+      for(const auto type : {AtomicOpType::add})
+        offload->tls_epilogue->insert(
+            AtomicOpStmt::make_for_reduction(type, global_ptr,
+                                            tls_load),
+            -1);
     }
 
     // allocate storage for the TLS variable
