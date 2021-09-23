@@ -5,6 +5,7 @@ from taichi.lang import impl
 
 import taichi as ti
 
+from .kernelmetrics import default_metric_list
 
 class StatisticalResult:
     """Statistical result of records.
@@ -48,36 +49,17 @@ class KernelProfiler:
         ``_statistical_results`` is a dict of statistical profiling results, statistics via :func:`~taichi.profiler.kernelprofiler.KernelProfiler.count_results`.
         """
         self._profiling_mode = False
+        self._metric_list = []
         self._total_time_ms = 0.0
         self._traced_records = []
         self._statistical_results = {}
 
-    def set_kernel_profiler_mode(self, mode=False):
-        if type(mode) is bool:
-            self._profiling_mode = mode
-        else:
-            raise TypeError(f'Arg `mode` must be of type boolean. '
-                            f'Type {type(mode)} '
-                            f'is not supported')
-
-    def get_kernel_profiler_mode(self):
-        return self._profiling_mode
+    # ======================= internal func ==========================
 
     def clear_frontend(self):
         self._total_time_ms = 0.0
         self._traced_records.clear()
         self._statistical_results.clear()
-
-    def get_total_time(self):
-        self.update_records()  # traced records
-        self.count_results()  # _total_time_ms is counted here
-        return self._total_time_ms / 1000  # ms to s
-
-    def query_info(self, name):
-        self.update_records()  # traced records
-        self.count_results()  # statistical results
-        # TODO : query self.StatisticalResult in python scope
-        return impl.get_runtime().prog.query_kernel_profile_info(name)
 
     def clear_info(self):
         impl.get_runtime().sync()  #sync first
@@ -91,6 +73,9 @@ class KernelProfiler:
         self.clear_frontend()
         self._traced_records = impl.get_runtime(
         ).prog.get_kernel_profiler_records()
+        print(type(self._traced_records[0].metric_values))
+        # print(type(self._traced_records[0].metric_values[0]))
+        # print((self._traced_records[0].metric_values[0]))
 
     def count_results(self):
         """Counts the statistical results.
@@ -111,6 +96,40 @@ class KernelProfiler:
                                key=lambda item: item[1],
                                reverse=True)
         }
+
+    # ================================================================
+
+    def set_kernel_profiler_mode(self, mode=False):
+        """API TODO docstring"""
+        if type(mode) is bool:
+            self._profiling_mode = mode
+        else:
+            raise TypeError(f'Arg `mode` must be of type boolean. '
+                            f'Type {type(mode)} '
+                            f'is not supported')
+
+    def get_kernel_profiler_mode(self):
+        """API TODO docstring"""
+        return self._profiling_mode
+    
+    def collect_metrics(self, metric_list=default_metric_list):
+        """API TODO docstring"""
+        self._metric_list = metric_list
+        metric_name_list = [metric.name for metric in metric_list]
+        self.clear_info()
+        impl.get_runtime().prog.reinit_kernel_profiler_with_metrics(metric_name_list)
+    
+    # TODO decouple with count_results 
+    def get_total_time(self):
+        self.update_records()  # traced records
+        self.count_results()  # _total_time_ms is counted here
+        return self._total_time_ms / 1000  # ms to s
+
+    def query_info(self, name):
+        self.update_records()  # traced records
+        self.count_results()  # statistical results
+        # TODO : query self.StatisticalResult in python scope
+        return impl.get_runtime().prog.query_kernel_profile_info(name)
 
     # print info mode
     COUNT = 'count'  # print the statistical results (min,max,avg time) of Taichi kernels.
@@ -168,27 +187,38 @@ class KernelProfiler:
 
         #trace mode : print records of launched kernel
         if mode == self.TRACE:
+            mlist = self._metric_list
+            metric_num = len(self._traced_records[0].metric_values)
             table_header = f"""
                 {partition_line('=',73)}
                 {_ti_core.arch_name(ti.cfg.arch).upper()} Profiler(trace)
                 {partition_line('=',73)}
             """
-            items_header = f"""
-                [      % |     time    ] Kernel name
-            """
+            # items_header = f"""
+            #     [      % |     time    ] Kernel name
+            # """
+            items_header = ('[' + ''.join(mlist[idx].header + '|' for idx in range(metric_num)) + ']' + ' Kernel name').replace("|]","]")
             print(inspect.cleandoc(table_header))
-            print(inspect.cleandoc(items_header))
+            # print(inspect.cleandoc(items_header))
+            print(items_header)
             for record in self._traced_records:
                 fraction = record.kernel_time / self._total_time_ms * 100.0
+                one_line_message = ('[' + ''.join(mlist[idx].string + '|' for idx in range(metric_num))  + '] ' + record.name).replace("|]","]")
+                print(one_line_message.format(*[record.metric_values[idx]*mlist[idx].scale for idx in range(metric_num)]))
                 #message in one line
-                print("[{:6.2f}% |{:9.3f}  ms] {}".format(
-                    fraction, record.kernel_time, record.name))
+                # print("[{:6.2f}% |{:9.3f}  ms] {}".format(
+                #     fraction, record.kernel_time, record.name))
             print(f"{partition_line('-',73)}")
             #one-line summary
             print(f"[100.00%] Total kernel execution time: "
                   f"{self._total_time_ms/1000:7.3f} s   "
                   f"number of records:  {len(self._traced_records)}")
             print(f"{partition_line('=',73)}")
+
+            
+           
+            
+            print(record.format(*[metric.value for metric in mlist]))
 
 
 _ti_kernel_profiler = KernelProfiler()

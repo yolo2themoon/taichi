@@ -16,6 +16,7 @@ struct KernelProfileTracedRecord {
   std::string name;
   float kernel_elapsed_time_in_ms{0.0};
   float time_since_base{0.0};  // for Timeline
+  std::vector<float> metric_values;
 };
 
 struct KernelProfileStatisticalResult {
@@ -44,6 +45,8 @@ class KernelProfilerBase {
  public:
   // Needed for the CUDA backend since we need to know which task to "stop"
   using TaskHandle = void *;
+
+  virtual void reinit_with_metrics(const std::vector<std::string> metrics){TI_NOT_IMPLEMENTED};
 
   virtual void clear() = 0;
 

@@ -503,6 +503,14 @@ CuptiToolkit::~CuptiToolkit() {
   deinit_cupti();
 }
 
+void CuptiToolkit::reset_metrics(const std::vector<std::string> metrics){
+  cupti_config_.metric_list.clear();
+  for (auto metric : MetricListDeafult)     
+    cupti_config_.metric_list.push_back(metric);
+  for (auto metric : metrics)     
+    cupti_config_.metric_list.push_back(metric);
+}
+
 bool CuptiToolkit::init_cupti() {
   // copy from CUPTI/samples/autorange_profiling/simplecuda.cu
   CUpti_Profiler_Initialize_Params profiler_initialize_params = {
@@ -744,14 +752,17 @@ bool CuptiToolkit::update_record(
     RETURN_IF_NVPW_ERROR(
         false, NVPW_MetricsContext_EvaluateToGpuValues(&eval_to_gpu_params));
 
+    //Taichi modified
+
+    //default metric : kernel_elapsed_time_in_ms
     traced_records[range_index].kernel_elapsed_time_in_ms =
         gpu_values[CUPTI_METRIC_KERNEL_ELAPSED_CLK_NUMS] /
         gpu_values[CUPTI_METRIC_CORE_FREQUENCY_HZS] * 1000;  // from s to ms
-    // traced_records[range_index].memory_load_bytes  =
-    // gpu_values[CUPTI_METRIC_GLOBAL_LOAD_BYTES];
-    // traced_records[range_index].memory_store_bytes =
-    // gpu_values[CUPTI_METRIC_GLOBAL_STORE_BYTES];
-    // TODO add these metrics value to record(backend and frontend)
+    //user defined metrics
+    int metric_num = cupti_config_.metric_list.size();
+    for(int idx = CUPTI_METRIC_DEFAULT_TOTAL; idx<metric_num; idx++){
+      traced_records[range_index].metric_values.push_back(gpu_values[idx]);
+    }
   }
   return true;
 }
