@@ -68,8 +68,8 @@ class KernelProfilerBase {
 
   virtual void print();
 
-  virtual void record(KernelProfilerBase::TaskHandle &task_handle,
-                      const std::string &task_name){TI_NOT_IMPLEMENTED};
+  virtual void trace(KernelProfilerBase::TaskHandle &task_handle,
+                     const std::string &task_name){TI_NOT_IMPLEMENTED};
 
   void query(const std::string &kernel_name,
              int &counter,
@@ -87,6 +87,6 @@ class KernelProfilerBase {
   }
 };
 
-std::unique_ptr<KernelProfilerBase> make_profiler(Arch arch);
+std::unique_ptr<KernelProfilerBase> make_profiler(Arch arch, bool enable);
 
 TLANG_NAMESPACE_END
