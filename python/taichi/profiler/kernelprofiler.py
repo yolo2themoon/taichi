@@ -7,6 +7,8 @@ import taichi as ti
 
 from .kernelmetrics import default_metric_list
 
+from contextlib import contextmanager
+
 class StatisticalResult:
     """Statistical result of records.
 
@@ -112,13 +114,21 @@ class KernelProfiler:
         """API TODO docstring"""
         return self._profiling_mode
     
-    def collect_metrics(self, metric_list=default_metric_list):
+    def set_metrics(self, metric_list=default_metric_list):
         """API TODO docstring"""
         self._metric_list = metric_list
         metric_name_list = [metric.name for metric in metric_list]
         self.clear_info()
         impl.get_runtime().prog.reinit_kernel_profiler_with_metrics(metric_name_list)
-    
+
+    @contextmanager
+    def collect_metrics(self, metric_list=default_metric_list):
+      _ti_core.info("with Profiler.run()")
+      self.set_metrics(metric_list)
+      yield self
+      _ti_core.info("end of Profiler.run()")
+      self.set_metrics() #back to default metric list 
+
     # TODO decouple with count_results 
     def get_total_time(self):
         self.update_records()  # traced records
@@ -145,7 +155,7 @@ class KernelProfiler:
         Args:
             mode (str): the way to print profiling results
         """
-        def partition_line(character, num):
+        def p_line(character, num):
             return character * num
 
         self.update_records()  # trace records
@@ -154,9 +164,9 @@ class KernelProfiler:
         #count mode (default) : print statistical results of all kernel
         if mode == self.COUNT:
             table_header = f"""
-                {partition_line('=',73)}
+                {p_line('=',73)}
                 {_ti_core.arch_name(ti.cfg.arch).upper()} Profiler(count)
-                {partition_line('=',73)}
+                {p_line('=',73)}
             """
             items_header = f"""
                 [      %     total   count |      min       avg       max   ] Kernel name
@@ -177,48 +187,54 @@ class KernelProfiler:
                         result.total_time / result.counter,  # avg_time
                         result.max_time,
                         result.name))
-            print(f"{partition_line('-',73)}")
+            print(f"{p_line('-',73)}")
             #one-line summary
             print(f"[100.00%] Total kernel execution time: "
                   f"{self._total_time_ms/1000:7.3f} s   "
                   f"number of records:  "
                   f"{len(self._statistical_results)}")
-            print(f"{partition_line('=',73)}")
+            print(f"{p_line('=',73)}")
 
         #trace mode : print records of launched kernel
         if mode == self.TRACE:
             mlist = self._metric_list
             metric_num = len(self._traced_records[0].metric_values)
-            table_header = f"""
-                {partition_line('=',73)}
-                {_ti_core.arch_name(ti.cfg.arch).upper()} Profiler(trace)
-                {partition_line('=',73)}
-            """
-            # items_header = f"""
-            #     [      % |     time    ] Kernel name
-            # """
-            items_header = ('[' + ''.join(mlist[idx].header + '|' for idx in range(metric_num)) + ']' + ' Kernel name').replace("|]","]")
-            print(inspect.cleandoc(table_header))
-            # print(inspect.cleandoc(items_header))
-            print(items_header)
-            for record in self._traced_records:
-                fraction = record.kernel_time / self._total_time_ms * 100.0
-                one_line_message = ('[' + ''.join(mlist[idx].string + '|' for idx in range(metric_num))  + '] ' + record.name).replace("|]","]")
-                print(one_line_message.format(*[record.metric_values[idx]*mlist[idx].scale for idx in range(metric_num)]))
-                #message in one line
-                # print("[{:6.2f}% |{:9.3f}  ms] {}".format(
-                #     fraction, record.kernel_time, record.name))
-            print(f"{partition_line('-',73)}")
-            #one-line summary
-            print(f"[100.00%] Total kernel execution time: "
-                  f"{self._total_time_ms/1000:7.3f} s   "
-                  f"number of records:  {len(self._traced_records)}")
-            print(f"{partition_line('=',73)}")
+            record_num = len(self._traced_records)
+            fake_timestamp = 0.0
+            string_list = []
+            values_list = []
 
-            
-           
-            
-            print(record.format(*[metric.value for metric in mlist]))
+            # table
+            table_header = f"{_ti_core.arch_name(ti.cfg.arch).upper()} Profiler(trace)"
+            # items
+            items_header = ('[  start.time | kernel.time |') #default
+            items_header += ''.join(mlist[idx].header + '|' for idx in range(metric_num)) + ']'
+            items_header = (items_header + ' Kernel name').replace("|]","]")
+            # partition line
+            outer_partition_line = '='*len(items_header)
+            inner_partition_line = '-'*len(items_header)
+            # message in one line: 
+            #     formatted_str.format(*values)
+            for record in self._traced_records:
+                formatted_str = ("[{:9.3f} ms |{:9.3f} ms |") #default
+                formatted_str += (''.join(mlist[idx].format + '|' for idx in range(metric_num))  + '] ' + record.name)
+                values = [fake_timestamp,record.kernel_time] #default
+                values += [record.metric_values[idx]*mlist[idx].scale for idx in range(metric_num)]
+                string_list.append(formatted_str.replace("|]","]"))
+                values_list.append(values)
+                fake_timestamp += record.kernel_time
+
+            # print
+            print(outer_partition_line)
+            print(table_header)
+            print(outer_partition_line)
+            print(items_header)
+            print(inner_partition_line)
+            for idx in range(record_num):
+                print(string_list[idx].format(*values_list[idx]))
+            print(inner_partition_line)
+            print(f"number of records:  {len(self._traced_records)}")
+            print(outer_partition_line)
 
 
 _ti_kernel_profiler = KernelProfiler()
