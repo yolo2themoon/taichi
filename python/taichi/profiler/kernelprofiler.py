@@ -1,4 +1,5 @@
 import inspect
+from contextlib import contextmanager
 
 from taichi.core import ti_core as _ti_core
 from taichi.lang import impl
@@ -7,7 +8,6 @@ import taichi as ti
 
 from .kernelmetrics import default_metric_list
 
-from contextlib import contextmanager
 
 class StatisticalResult:
     """Statistical result of records.
@@ -113,23 +113,24 @@ class KernelProfiler:
     def get_kernel_profiler_mode(self):
         """API TODO docstring"""
         return self._profiling_mode
-    
+
     def set_metrics(self, metric_list=default_metric_list):
         """API TODO docstring"""
         self._metric_list = metric_list
         metric_name_list = [metric.name for metric in metric_list]
         self.clear_info()
-        impl.get_runtime().prog.reinit_kernel_profiler_with_metrics(metric_name_list)
+        impl.get_runtime().prog.reinit_kernel_profiler_with_metrics(
+            metric_name_list)
 
     @contextmanager
     def collect_metrics(self, metric_list=default_metric_list):
-      _ti_core.info("with Profiler.run()")
-      self.set_metrics(metric_list)
-      yield self
-      _ti_core.info("end of Profiler.run()")
-      self.set_metrics() #back to default metric list 
+        _ti_core.info("with Profiler.run()")
+        self.set_metrics(metric_list)
+        yield self
+        _ti_core.info("end of Profiler.run()")
+        self.set_metrics()  #back to default metric list
 
-    # TODO decouple with count_results 
+    # TODO decouple with count_results
     def get_total_time(self):
         self.update_records()  # traced records
         self.count_results()  # _total_time_ms is counted here
@@ -207,20 +208,26 @@ class KernelProfiler:
             # table
             table_header = f"{_ti_core.arch_name(ti.cfg.arch).upper()} Profiler(trace)"
             # items
-            items_header = ('[  start.time | kernel.time |') #default
-            items_header += ''.join(mlist[idx].header + '|' for idx in range(metric_num)) + ']'
-            items_header = (items_header + ' Kernel name').replace("|]","]")
+            items_header = ('[  start.time | kernel.time |')  #default
+            items_header += ''.join(mlist[idx].header + '|'
+                                    for idx in range(metric_num)) + ']'
+            items_header = (items_header + ' Kernel name').replace("|]", "]")
             # partition line
-            outer_partition_line = '='*len(items_header)
-            inner_partition_line = '-'*len(items_header)
-            # message in one line: 
+            outer_partition_line = '=' * len(items_header)
+            inner_partition_line = '-' * len(items_header)
+            # message in one line:
             #     formatted_str.format(*values)
             for record in self._traced_records:
-                formatted_str = ("[{:9.3f} ms |{:9.3f} ms |") #default
-                formatted_str += (''.join(mlist[idx].format + '|' for idx in range(metric_num))  + '] ' + record.name)
-                values = [fake_timestamp,record.kernel_time] #default
-                values += [record.metric_values[idx]*mlist[idx].scale for idx in range(metric_num)]
-                string_list.append(formatted_str.replace("|]","]"))
+                formatted_str = ("[{:9.3f} ms |{:9.3f} ms |")  #default
+                formatted_str += (''.join(mlist[idx].format + '|'
+                                          for idx in range(metric_num)) +
+                                  '] ' + record.name)
+                values = [fake_timestamp, record.kernel_time]  #default
+                values += [
+                    record.metric_values[idx] * mlist[idx].scale
+                    for idx in range(metric_num)
+                ]
+                string_list.append(formatted_str.replace("|]", "]"))
                 values_list.append(values)
                 fake_timestamp += record.kernel_time
 

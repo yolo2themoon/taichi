@@ -503,11 +503,11 @@ CuptiToolkit::~CuptiToolkit() {
   deinit_cupti();
 }
 
-void CuptiToolkit::reset_metrics(const std::vector<std::string> metrics){
+void CuptiToolkit::reset_metrics(const std::vector<std::string> metrics) {
   cupti_config_.metric_list.clear();
-  for (auto metric : MetricListDeafult)     
+  for (auto metric : MetricListDeafult)
     cupti_config_.metric_list.push_back(metric);
-  for (auto metric : metrics)     
+  for (auto metric : metrics)
     cupti_config_.metric_list.push_back(metric);
 }
 
@@ -752,15 +752,15 @@ bool CuptiToolkit::update_record(
     RETURN_IF_NVPW_ERROR(
         false, NVPW_MetricsContext_EvaluateToGpuValues(&eval_to_gpu_params));
 
-    //Taichi modified
+    // Taichi modified
 
-    //default metric : kernel_elapsed_time_in_ms
+    // default metric : kernel_elapsed_time_in_ms
     traced_records[range_index].kernel_elapsed_time_in_ms =
         gpu_values[CUPTI_METRIC_KERNEL_ELAPSED_CLK_NUMS] /
         gpu_values[CUPTI_METRIC_CORE_FREQUENCY_HZS] * 1000;  // from s to ms
-    //user defined metrics
+    // user defined metrics
     int metric_num = cupti_config_.metric_list.size();
-    for(int idx = CUPTI_METRIC_DEFAULT_TOTAL; idx<metric_num; idx++){
+    for (int idx = CUPTI_METRIC_DEFAULT_TOTAL; idx < metric_num; idx++) {
       traced_records[range_index].metric_values.push_back(gpu_values[idx]);
     }
   }

@@ -219,7 +219,8 @@ void export_lang(py::module &m) {
       .def_readwrite("kernel_time",
                      &KernelProfileTracedRecord::kernel_elapsed_time_in_ms)
       .def_readwrite("base_time", &KernelProfileTracedRecord::time_since_base)
-      .def_readwrite("metric_values", &KernelProfileTracedRecord::metric_values);
+      .def_readwrite("metric_values",
+                     &KernelProfileTracedRecord::metric_values);
 
   py::class_<Program>(m, "Program")
       .def(py::init<>())

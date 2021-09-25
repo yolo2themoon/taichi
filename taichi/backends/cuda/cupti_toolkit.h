@@ -12,8 +12,8 @@ enum CuptiMetricsDefault {
 };
 
 const std::vector<std::string> MetricListDeafult = {
-    "smsp__cycles_elapsed.avg", // CUPTI_METRIC_KERNEL_ELAPSED_CLK_NUMS
-    "smsp__cycles_elapsed.avg.per_second" // CUPTI_METRIC_CORE_FREQUENCY_
+    "smsp__cycles_elapsed.avg",  // CUPTI_METRIC_KERNEL_ELAPSED_CLK_NUMS
+    "smsp__cycles_elapsed.avg.per_second"  // CUPTI_METRIC_CORE_FREQUENCY_
 };
 
 struct CuptiConfig {

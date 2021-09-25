@@ -27,7 +27,8 @@ KernelProfilerCUDA::KernelProfilerCUDA(bool enable) {
   }
 }
 
-void KernelProfilerCUDA::reinit_with_metrics(const std::vector<std::string> metrics) {
+void KernelProfilerCUDA::reinit_with_metrics(
+    const std::vector<std::string> metrics) {
   TI_TRACE("KernelProfilerCUDA::reinit_with_metrics");
   if (tool_ == ProfilingToolkit::event) {
     return;
