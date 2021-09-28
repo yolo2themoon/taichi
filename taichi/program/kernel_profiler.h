@@ -16,8 +16,8 @@ struct KernelProfileTracedRecord {
   std::string name;
   float kernel_elapsed_time_in_ms{0.0};
   float time_since_base{0.0};  // for Timeline
-  // TODO: user defined metrics
-  // std::vector<float> metric_values;
+  // user selected metrics
+  std::vector<float> metric_values;
 };
 
 struct KernelProfileStatisticalResult {
