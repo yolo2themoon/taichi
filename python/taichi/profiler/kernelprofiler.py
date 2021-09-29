@@ -25,6 +25,7 @@ class StatisticalResult:
         return self.total_time < other.total_time
 
     def insert_record(self, time):
+        """API TODO docstring"""
         if self.counter == 0:
             self.min_time = time
             self.max_time = time
