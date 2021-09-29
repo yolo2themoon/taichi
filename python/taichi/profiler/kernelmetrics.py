@@ -1,4 +1,6 @@
 class CuptiMetric:
+    '''
+    '''
     def __init__(self, name='', header='', format='', scale=1.0):
         #cupti metric
         self.name = name  #(str): metric name for init CuptiToolkit
@@ -6,7 +8,6 @@ class CuptiMetric:
         self.header = header  #(str): header for formatted printing
         self.format = format  #(str): format for print metric value and unit
         self.scale = scale  #(double): scale for metric value
-
 
 # When declare a metric in this way:
 #
@@ -23,10 +24,7 @@ class CuptiMetric:
 #
 # Which is not good for reading
 
-########################## Memory Metrics ##########################
-
-# global_load             smsp__inst_executed_op_global_ld.sum
-# global_store            smsp__inst_executed_op_global_st.sum
+########################## Global Memory Metrics ##########################
 
 dram_utilization = CuptiMetric()
 dram_utilization.name = 'dram__throughput.avg.pct_of_peak_sustained_elapsed'
@@ -69,8 +67,7 @@ dram_write_throughput.header = '   global.w/s '
 dram_write_throughput.format = '{:8.3f} GB/s '
 dram_write_throughput.scale = 1.0 / 1024 / 1024 / 1024
 
-# shared_load	            smsp__inst_executed_op_shared_ld.sum
-# shared_store	          smsp__inst_executed_op_shared_st.sum
+########################## Shared Memory Metrics ##########################
 
 shared_utilization = CuptiMetric()
 shared_utilization.name = 'l1tex__data_pipe_lsu_wavefronts_mem_shared.avg.pct_of_peak_sustained_elapsed'
@@ -97,20 +94,21 @@ shared_bank_conflicts_load.name = 'l1tex__data_bank_conflicts_pipe_lsu_mem_share
 shared_bank_conflicts_load.header = ' bank.conflict.r '
 shared_bank_conflicts_load.format = '      {:10.0f} '
 
-# atomic
-# atomic
+
+########################## Atomic Metrics ##########################
 
 global_op_atom = CuptiMetric()
 global_op_atom.name = 'l1tex__t_set_accesses_pipe_lsu_mem_global_op_atom.sum'
 global_op_atom.header = ' global.atom '
 global_op_atom.format = '    {:8.0f} '
 
-global_op_red = CuptiMetric()
-global_op_red.name = 'l1tex__t_set_accesses_pipe_lsu_mem_global_op_red.sum'
-global_op_red.header = ' global.red '
-global_op_red.format = '   {:8.0f} '
+global_op_reduction = CuptiMetric()
+global_op_reduction.name = 'l1tex__t_set_accesses_pipe_lsu_mem_global_op_red.sum'
+global_op_reduction.header = ' global.red '
+global_op_reduction.format = '   {:8.0f} '
 
-########################## hardware utilization ##########################
+################# Hardware Utilization Metrics #####################
+
 sm_throughput = CuptiMetric()
 sm_throughput.name = 'sm__throughput.avg.pct_of_peak_sustained_elapsed'
 sm_throughput.header = ' core.uti '
@@ -148,9 +146,8 @@ achieved_occupancy.name = 'sm__warps_active.avg.pct_of_peak_sustained_active'
 achieved_occupancy.header = ' occupancy'
 achieved_occupancy.format = '   {:6.0f} '
 
-# metric suite
 
-#####  global load & store #####
+####  global load & store ####
 global_access_metrics = [
     dram_utilization,
     dram_bytes_sum,
@@ -161,7 +158,7 @@ global_access_metrics = [
     dram_write_throughput,
 ]
 
-##### shared load & store ####
+#### shared load & store ####
 shared_access_metrics = [
     shared_utilization,
     shared_transactions_load,
@@ -170,19 +167,19 @@ shared_access_metrics = [
     shared_bank_conflicts_load,
 ]
 
-##### atomic access ####
+#### atomic access ####
 atomic_access_metrics = [
     global_op_atom,
-    global_op_red,
+    global_op_reduction,
 ]
 
-##### cache hit ####
+#### cache hit ####
 cache_hit_metrics = [
     l1_hit_rate,
     l2_hit_rate,
 ]
 
-##### device throughput ####
+#### device throughput ####
 device_utilization_metrics = [
     sm_throughput,
     dram_throughput,
