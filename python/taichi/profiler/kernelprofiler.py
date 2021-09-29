@@ -75,6 +75,14 @@ class KernelProfiler:
         self.count_statistics()  # _total_time_ms is counted here
         return self._total_time_ms / 1000  # ms to s
 
+    def clear_info(self):
+        """API TODO docstring"""
+        #sync first
+        impl.get_runtime().sync()
+        #then clear backend & frontend info
+        impl.get_runtime().prog.clear_kernel_profile_info()
+        self.clear_frontend()
+
     def query_info(self, name):
         """API TODO docstring"""
         self.update_records()  # kernel records
@@ -132,13 +140,6 @@ class KernelProfiler:
         self._total_time_ms = 0.0
         self._traced_records.clear()
         self._statistical_results.clear()
-
-    def clear_info(self):
-        #sync first
-        impl.get_runtime().sync()
-        #then clear backend & frontend info
-        impl.get_runtime().prog.clear_kernel_profile_info()
-        self.clear_frontend()
 
     def update_records(self):
         # Acquires kernel records from a backend
