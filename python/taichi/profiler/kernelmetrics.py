@@ -9,6 +9,7 @@ class CuptiMetric:
         self.format = format  #(str): format for print metric value and unit
         self.scale = scale  #(double): scale for metric value
 
+
 # When declare a metric in this way:
 #
 #   dram_utilization = CuptiMetric(
@@ -94,7 +95,6 @@ shared_bank_conflicts_load.name = 'l1tex__data_bank_conflicts_pipe_lsu_mem_share
 shared_bank_conflicts_load.header = ' bank.conflict.r '
 shared_bank_conflicts_load.format = '      {:10.0f} '
 
-
 ########################## Atomic Metrics ##########################
 
 global_op_atom = CuptiMetric()
@@ -145,7 +145,6 @@ achieved_occupancy = CuptiMetric()
 achieved_occupancy.name = 'sm__warps_active.avg.pct_of_peak_sustained_active'
 achieved_occupancy.header = ' occupancy'
 achieved_occupancy.format = '   {:6.0f} '
-
 
 ####  global load & store ####
 global_access_metrics = [

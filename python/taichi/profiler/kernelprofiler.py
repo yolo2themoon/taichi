@@ -37,8 +37,8 @@ class StatisticalResult:
 class KernelProfiler:
     """Kernel profiler of Taichi.
 
-    Kernel profiler acquires kernel profiling records from backend, counts records in python scope,
-    and outputs results by printing : :func:`~taichi.profiler.kernelprofiler.KernelProfiler.print_info`.
+    Kernel profiler acquires kernel profiling records from backend, counts records in Python scope,
+    and prints the results to the console: :func:`~taichi.profiler.kernelprofiler.KernelProfiler.print_info`.
     """
     def __init__(self):
         """Constructor of class KernelProfiler.
@@ -46,13 +46,85 @@ class KernelProfiler:
         ``_profiling_mode`` is a boolean value, turn ON/OFF profiler by :func:`~taichi.profiler.kernelprofiler.KernelProfiler.set_kernel_profiler_mode`.
         ``_total_time_ms`` is a float value, get the value in seconds with :func:`~taichi.profiler.kernelprofiler.KernelProfiler.get_total_time`.
         ``_traced_records`` is a list of profiling records, acquired from backend by :func:`~taichi.profiler.kernelprofiler.KernelProfiler.update_records`.
-        ``_statistical_results`` is a dict of statistical profiling results, statistics via :func:`~taichi.profiler.kernelprofiler.KernelProfiler.count_results`.
+        ``_statistical_results`` is a dict of statistical profiling results, statistics via :func:`~taichi.profiler.kernelprofiler.KernelProfiler.count_statistics`.
         """
         self._profiling_mode = False
         self._metric_list = []
         self._total_time_ms = 0.0
         self._traced_records = []
         self._statistical_results = {}
+
+    # ======================== public methods ============================
+
+    def set_kernel_profiler_mode(self, mode=False):
+        """API TODO docstring"""
+        if type(mode) is bool:
+            self._profiling_mode = mode
+        else:
+            raise TypeError(f'Arg `mode` must be of type boolean. '
+                            f'Type {type(mode)} '
+                            f'is not supported')
+
+    def get_kernel_profiler_mode(self):
+        """API TODO docstring"""
+        return self._profiling_mode
+
+    def get_total_time(self):
+        """API TODO docstring"""
+        self.update_records()  # kernel records
+        self.count_statistics()  # _total_time_ms is counted here
+        return self._total_time_ms / 1000  # ms to s
+
+    def query_info(self, name):
+        """API TODO docstring"""
+        self.update_records()  # kernel records
+        self.count_statistics()  # statistics results
+        # TODO : query self.StatisticalResult in python scope
+        return impl.get_runtime().prog.query_kernel_profile_info(name)
+
+    def set_metrics(self, metric_list=default_metric_list):
+        """API TODO docstring"""
+        self._metric_list = metric_list
+        metric_name_list = [metric.name for metric in metric_list]
+        self.clear_info()
+        impl.get_runtime().prog.reinit_kernel_profiler_with_metrics(
+            metric_name_list)
+
+    @contextmanager
+    def collect_metrics_within_context(self, metric_list=default_metric_list):
+        """API TODO docstring
+
+        Example::
+        """
+        self.set_metrics(metric_list)
+        yield self
+        self.set_metrics()  #back to default metric list
+
+    # print info mode
+    COUNT = 'count'  # print the statistical results (min,max,avg time) of Taichi kernels.
+    TRACE = 'trace'  # print the records of launched Taichi kernels with specific profiling metrics (time, memory load/store and core utilization etc.)
+
+    def print_info(self, mode=COUNT):
+        """Print the profiling results of Taichi kernels.
+
+        To enable this profiler, set ``kernel_profiler=True`` in ``ti.init()``.
+        The default print mode is ``COUNT`` mode: print the statistical results (min,max,avg time) of Taichi kernels,
+        another mode ``TRACE``: print the records of launched Taichi kernels with specific profiling metrics (time, memory load/store and core utilization etc.)
+
+        Args:
+            mode (str): the way to print profiling results
+        """
+
+        self.update_records()  # kernel records
+        self.count_statistics()  # statistics results
+
+        #COUNT mode (default) : print statistics of all kernel
+        if mode == self.COUNT:
+            self.count_info()
+
+        #TRACE mode : print records of launched kernel
+        if mode == self.TRACE:
+            self.trace_info()
 
     # ======================= private methods ==========================
 
@@ -64,21 +136,20 @@ class KernelProfiler:
     def clear_info(self):
         #sync first
         impl.get_runtime().sync()
-        #clear backend & frontend
+        #then clear backend & frontend info
         impl.get_runtime().prog.clear_kernel_profile_info()
         self.clear_frontend()
 
     def update_records(self):
-        # Acquires profiling records from a backend
+        # Acquires kernel records from a backend
         impl.get_runtime().sync()
         self.clear_frontend()
         self._traced_records = impl.get_runtime(
         ).prog.get_kernel_profiler_records()
 
-    def count_results(self):
-        # Counts the statistical results.
-        # Profiling records with the same kernel name will be counted in a instance of class StatisticalResult.
-        # Presenting kernel profiling results in a statistical perspective.
+    def count_statistics(self):
+        # Counts the statistics results.
+        # The profiling records with the same kernel name are counted as a profiling result.
         for record in self._traced_records:
             if self._statistical_results.get(record.name) == None:
                 self._statistical_results[record.name] = StatisticalResult(
@@ -94,6 +165,9 @@ class KernelProfiler:
         }
 
     def count_info(self):
+        # In ``COUNT`` mode (default), the profiling records with the same kernel name are counted as a profiling result,
+        # and then the statistics are presented.
+
         # headers
         table_header = f'Kernel Profiler(count) @ {_ti_core.arch_name(ti.cfg.arch).upper()}'
         column_header = '[      %     total   count |      min       avg       max   ] Kernel name'
@@ -138,6 +212,9 @@ class KernelProfiler:
         print(outer_partition_line)
 
     def trace_info(self):
+        # In ``TRACE``` mode, the profiler shows you a list of kernels that were launched on hardware during the profiling period.
+        # This mode provides more detailed performance information and runtime hardware metrics for each kernel.
+
         metric_list = self._metric_list
         values_num = len(self._traced_records[0].metric_values)
 
@@ -179,73 +256,6 @@ class KernelProfiler:
         print(inner_partition_line)
         print(f"Number of records:  {len(self._traced_records)}")
         print(outer_partition_line)
-
-    # ======================== public methods ============================
-
-    def set_kernel_profiler_mode(self, mode=False):
-        if type(mode) is bool:
-            self._profiling_mode = mode
-        else:
-            raise TypeError(f'Arg `mode` must be of type boolean. '
-                            f'Type {type(mode)} '
-                            f'is not supported')
-
-    def get_kernel_profiler_mode(self):
-        return self._profiling_mode
-
-    def get_total_time(self):
-        self.update_records()  # traced records
-        self.count_results()  # _total_time_ms is counted here
-        return self._total_time_ms / 1000  # ms to s
-
-    def query_info(self, name):
-        self.update_records()  # traced records
-        self.count_results()  # statistical results
-        # TODO : query self.StatisticalResult in python scope
-        return impl.get_runtime().prog.query_kernel_profile_info(name)
-
-    def set_metrics(self, metric_list=default_metric_list):
-        """API TODO docstring"""
-        self._metric_list = metric_list
-        metric_name_list = [metric.name for metric in metric_list]
-        self.clear_info()
-        impl.get_runtime().prog.reinit_kernel_profiler_with_metrics(
-            metric_name_list)
-
-    @contextmanager
-    def collect_metrics(self, metric_list=default_metric_list):
-        """API TODO docstring"""
-        _ti_core.info("with Profiler.run()")
-        self.set_metrics(metric_list)
-        yield self
-        _ti_core.info("end of Profiler.run()")
-        self.set_metrics()  #back to default metric list
-
-    # print info mode
-    COUNT = 'count'  # print the statistical results (min,max,avg time) of Taichi kernels.
-    TRACE = 'trace'  # print the records of launched Taichi kernels with specific profiling metrics (time, memory load/store and core utilization etc.)
-
-    def print_info(self, mode=COUNT):
-        """Print the profiling results of Taichi kernels.
-
-        To enable this profiler, set ``kernel_profiler=True`` in ``ti.init()``.
-        The default print mode is ``COUNT`` mode: print the statistical results (min,max,avg time) of Taichi kernels,
-        another mode ``TRACE``: print the records of launched Taichi kernels with specific profiling metrics (time, memory load/store and core utilization etc.)
-
-        Args:
-            mode (str): the way to print profiling results
-        """
-
-        self.update_records()  # trace records
-        self.count_results()  # statistical results
-
-        #count mode (default) : print statistical results of all kernel
-        if mode == self.COUNT:
-            self.count_info()
-
-        #trace mode : print records of launched kernel
-        if mode == self.TRACE:
-            self.trace_info()
 
 
 _ti_kernel_profiler = KernelProfiler()
