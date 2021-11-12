@@ -224,12 +224,12 @@ void Program::synchronize() {
     if (config.async_mode) {
       async_engine->synchronize();
     }
-    if (profiler) {
-      profiler->sync();
-    }
     if (arch_uses_llvm(config.arch) || config.arch == Arch::metal ||
         config.arch == Arch::vulkan) {
       program_impl_->synchronize();
+    }
+    if (profiler) {
+      profiler->sync();
     }
     sync = true;
   }
