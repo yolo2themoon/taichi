@@ -17,11 +17,13 @@ num_spp_sqrt = int(math.sqrt(num_samples_per_pixel))
 # ti.init(kernel_profiler=True, log_level=ti.TRACE, arch=ti.cuda)
 
 ti.init(kernel_profiler=True, arch=ti.cuda)
+ti.set_kernel_profiler_mode(False)
 
 samples = ti.Vector.field(3,
                         dtype=ti.f32,
                         shape=(width, height, num_spp_sqrt, num_spp_sqrt))
 pixels = ti.Vector.field(3, dtype=ti.f32, shape=(width, height))
+
 
 
 @ti.data_oriented
@@ -148,18 +150,20 @@ if __name__ == '__main__':
     pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
     triangles.tile_culling()
     triangles.rasterize()
+    # ti.clear_kernel_profile_info()
+    ti.set_kernel_profiler_mode(True)
     ti.clear_kernel_profile_info()
-
-    # for x in range(128):
+    for x in range(128):
     # t0 = time.process_time()
-    for i in range(1024):
-        # samples.fill(ti.Vector([1.0, 1.0, 1.0]))
-        # pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
-        triangles.tile_culling()
-        triangles.rasterize()
-    t1 = time.process_time()
-    # print(t1-t0)
-    print(ti.kernel_profiler_total_time())
-
-    ti.print_kernel_profile_info()
+        for i in range(1024):
+            # samples.fill(ti.Vector([1.0, 1.0, 1.0]))
+            # pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
+            triangles.tile_culling()
+            triangles.rasterize()
+        # t1 = time.process_time()
+        # print(t1-t0)
+        print(ti.kernel_profiler_total_time())
+        ti.clear_kernel_profile_info()
+        # ti.print_kernel_profile_info()
+        print(f'    x={x}    ')
     # ti.print_kernel_profile_info('trace')
