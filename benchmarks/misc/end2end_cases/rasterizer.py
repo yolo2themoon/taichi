@@ -9,8 +9,8 @@ import taichi as ti
 
 
 tile_size = 8  # Size of a tile
-width, height = 500, 500  # Size of framebuffer
-num_triangles = 60  # Number of random colored triangles to be generated
+width, height = 800, 600  # Size of framebuffer
+num_triangles = 256  # Number of random colored triangles to be generated
 num_samples_per_pixel = 4  # Number of samples per pixel
 num_spp_sqrt = int(math.sqrt(num_samples_per_pixel))
 
@@ -133,9 +133,7 @@ class TriangleRasterizer:
     #     triangles.rasterize()
 
 if __name__ == '__main__':
-    
 
-    
     triangles = TriangleRasterizer(num_triangles)
     for i in range(num_triangles):
         triangles.set_triangle(i % num_triangles,
@@ -146,20 +144,22 @@ if __name__ == '__main__':
                             ti.Vector(np.random.rand(3)),
                             ti.Vector(np.random.rand(3)))
     
+    samples.fill(ti.Vector([1.0, 1.0, 1.0]))
+    pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
     triangles.tile_culling()
     triangles.rasterize()
-
     ti.clear_kernel_profile_info()
 
     # for x in range(128):
-    t0 = time.process_time()
-    for i in range(1000):
-        samples.fill(ti.Vector([1.0, 1.0, 1.0]))
-        pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
+    # t0 = time.process_time()
+    for i in range(1024):
+        # samples.fill(ti.Vector([1.0, 1.0, 1.0]))
+        # pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
         triangles.tile_culling()
         triangles.rasterize()
     t1 = time.process_time()
-    print(t1-t0)
+    # print(t1-t0)
+    print(ti.kernel_profiler_total_time())
 
     ti.print_kernel_profile_info()
-    ti.print_kernel_profile_info('trace')
+    # ti.print_kernel_profile_info('trace')
