@@ -72,19 +72,26 @@ class DefaultProfiler : public KernelProfilerBase {
   void sync() override {
   }
 
+  DefaultProfiler(bool enabled) : KernelProfilerBase(enabled) {
+  }
+
   void clear() override {
-    // sync(); //decoupled: trigger from the foront end
+    // trigger sync(); from the foront end
     total_time_ms_ = 0;
     traced_records_.clear();
     statistical_results_.clear();
   }
 
   void start(const std::string &kernel_name) override {
+    if (!enabled_)
+      return;
     start_t_ = Time::get_time();
     event_name_ = kernel_name;
   }
 
   void stop() override {
+    if (!enabled_)
+      return;
     auto t = Time::get_time() - start_t_;
     auto ms = t * 1000.0;
     // trace record
@@ -124,7 +131,7 @@ std::unique_ptr<KernelProfilerBase> make_profiler(Arch arch, bool enable) {
     TI_NOT_IMPLEMENTED;
 #endif
   } else {
-    return std::make_unique<DefaultProfiler>();
+    return std::make_unique<DefaultProfiler>(enable);
   }
 }
 TLANG_NAMESPACE_END

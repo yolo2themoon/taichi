@@ -108,6 +108,33 @@ timeline_save = lambda fn: impl.get_runtime().prog.timeline_save(fn)
 type_factory_ = _ti_core.get_type_factory_instance()
 
 
+def set_kernel_profiler_mode(mode: bool):
+    """Temporarily turn ON or OFF kernel profiler.
+
+    Args:
+        mode (bool): Temporarily turn ON or OFF.
+
+    Example::
+
+        >>> import taichi as ti
+
+        >>> ti.init(ti.cpu, kernel_profiler=True)
+        >>> ti.set_kernel_profiler_mode(False)
+        >>> var = ti.field(ti.f32, shape=1)
+
+        >>> @ti.kernel
+        >>> def compute():
+        >>>     var[0] = 1.0
+
+        >>> compute() # The first call has JIT compilation overhead.
+        >>> ti.set_kernel_profiler_mode(True)
+        >>> for i in range(128):
+        >>>     compute()
+        >>> ti.print_kernel_profile_info()
+    """
+    get_default_kernel_profiler().set_kernel_profiler_mode(mode)
+
+
 @deprecated('kernel_profiler_print()', 'print_kernel_profile_info()')
 def kernel_profiler_print():
     return print_kernel_profile_info()
@@ -1053,7 +1080,7 @@ def adaptive_arch_select(arch):
     return cpu
 
 
-class _ArchCheckers(object):
+class _ArchCheckers:
     def __init__(self):
         self._checkers = []
 
@@ -1182,8 +1209,7 @@ def torch_test(func):
     if ti.has_pytorch():
         # OpenGL somehow crashes torch test without a reason, unforturnately
         return ti.test(exclude=[opengl])(func)
-    else:
-        return lambda: None
+    return lambda: None
 
 
 def get_host_arch_list():

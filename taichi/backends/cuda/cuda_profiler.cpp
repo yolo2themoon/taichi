@@ -9,9 +9,10 @@ TLANG_NAMESPACE_BEGIN
 
 // The init logic here is temporarily set up for test CUPTI
 // will not affect default toolkit (cuEvent)
-KernelProfilerCUDA::KernelProfilerCUDA(bool enable) {
+KernelProfilerCUDA::KernelProfilerCUDA(bool enabled)
+    : KernelProfilerBase(enabled) {
   metric_list_.clear();
-  if (enable) {
+  if (enabled) {
     tool_ = ProfilingToolkit::event;
 #if defined(TI_WITH_CUDA_TOOLKIT)
     // if Taichi was compiled with CUDA toolit, then use CUPTI
@@ -31,6 +32,21 @@ KernelProfilerCUDA::KernelProfilerCUDA(bool enable) {
 
 std::string KernelProfilerCUDA::get_device_name() {
   return CUDAContext::get_instance().get_device_name();
+}
+
+void KernelProfilerCUDA::set_kernel_profiler_mode(bool enabled) {
+  enabled_ = enabled;
+  if (tool_ == ProfilingToolkit::cupti) {
+    if (enabled_) {
+      // to reuse reinit_with_metrics(), init() first
+      cupti_toolkit_->init_cupti();
+      cupti_toolkit_->begin_profiling();
+      reinit_with_metrics(metric_list_);
+    } else {
+      cupti_toolkit_->end_profiling();
+      cupti_toolkit_->deinit_cupti();
+    }
+  }
 }
 
 bool KernelProfilerCUDA::reinit_with_metrics(
