@@ -5,9 +5,9 @@ import taichi as ti
 
 def e2e_cornellbox(test_arch):
     ti.init(kernel_profiler=True, arch=test_arch)
-    basic_repeat_times = 1000
-    arch_repeat_times = 1 if test_arch==ti.cuda else 1
-    
+    basic_repeat_times = 100
+    arch_repeat_times = 10 if test_arch==ti.cuda else 1
+        
     res = (800, 800)
     color_buffer = ti.Vector.field(3, dtype=ti.f32, shape=res)
     count_var = ti.field(ti.i32, shape=(1, ))
@@ -490,21 +490,21 @@ def e2e_cornellbox(test_arch):
     def tonemap(accumulated: ti.f32):
         for i, j in tonemapped_buffer:
             tonemapped_buffer[i, j] = ti.sqrt(color_buffer[i, j] / accumulated *
-                                            100.0)
+                                           100.0)
+    
 
-    print('first run')
-    for i in range(1024):
+    print('    initialization ...')
+    for i in range(10):
         render()
-    ti.clear_kernel_profile_info()
-
-    print('profiling begin ...')
+   
+    print('    profiling begin ...')
     time_in_s = 0.0
     for i in range(arch_repeat_times):
         ti.clear_kernel_profile_info()
         for j in range(basic_repeat_times):
             render()
         time_in_s += ti.kernel_profiler_total_time()
-    print(f'time = {time_in_s}')
+    print(f'    time = {time_in_s}')
     ti.reset()
     return time_in_s
 

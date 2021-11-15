@@ -4,7 +4,6 @@ import taichi as ti
 
 def e2e_mpm99(test_arch):
     ti.init(kernel_profiler=True, arch=test_arch)
-    arch_repeat_times = 10 #if test_arch==ti.cuda else 10
 
     quality = 1  # Use a larger value for higher-res simulations
     n_particles, n_grid = 9000 * quality**2, 128 * quality
@@ -119,23 +118,55 @@ def e2e_mpm99(test_arch):
             F[i] = ti.Matrix([[1, 0], [0, 1]])
             Jp[i] = 1
 
-    print('first run')
+    print('    initialization ...')
     innner_iter = int(2e-3 // dt)
-    outter_iter = 32
+    outter_iter = 320
     initialize()
     for j in range(innner_iter):
         substep()
 
-    print('profiling begin ...')
+    print('    profiling begin ...')
     time_in_s = 0.0
-    for i in range(arch_repeat_times):
-        ti.clear_kernel_profile_info()
-        for j in range(outter_iter*innner_iter):
+    initialize()
+    ti.clear_kernel_profile_info()
+    for j in range(outter_iter):
+        for s in range(innner_iter):
             substep()
-        time_in_s += ti.kernel_profiler_total_time()
-    print(f'time = {time_in_s}')
+    time_in_s += ti.kernel_profiler_total_time()
+    print(f'    time = {time_in_s}')
     ti.reset()
     return time_in_s
 
 if __name__ == '__main__':
     e2e_mpm99(ti.cuda)
+
+# =========================================================================
+# Kernel Profiler(count) @ X64 
+# =========================================================================
+# [      %     total   count |      min       avg       max   ] Kernel name
+# -------------------------------------------------------------------------
+# [ 84.27%   2.785 s   6080x |    0.423     0.458     5.278 ms] substep_c38_0_kernel_5_range_for
+# [  7.35%   0.243 s   6080x |    0.033     0.040     3.666 ms] substep_c38_0_kernel_7_range_for
+# [  4.22%   0.140 s   6080x |    0.017     0.023     0.526 ms] substep_c38_0_kernel_6_range_for
+# [  4.16%   0.138 s   6080x |    0.015     0.023     2.545 ms] substep_c38_0_kernel_4_range_for
+# -------------------------------------------------------------------------
+# [100.00%] Total execution time:   3.305 s   number of results: 4
+# =========================================================================
+# time = 3.3049161434173584
+# benchmarkbot@LEGION-REN7000K-26IOB:~/taichi/benchmarks/misc$ python end2end_cases/mpm99.py 
+# [Taichi] version 0.8.6, llvm 10.0.0, commit 6ea3e8c3, linux, python 3.8.10
+# [Taichi] Starting on arch=cuda
+# initialization ...
+# profiling begin ...
+# =========================================================================
+# Kernel Profiler(count) @ CUDA on NVIDIA GeForce RTX 2060
+# =========================================================================
+# [      %     total   count |      min       avg       max   ] Kernel name
+# -------------------------------------------------------------------------
+# [ 71.01%   0.101 s   6080x |    0.000     0.017     0.028 ms] substep_c38_0_kernel_5_range_for
+# [ 18.08%   0.026 s   6080x |    0.000     0.004     0.008 ms] substep_c38_0_kernel_7_range_for
+# [  5.92%   0.008 s   6080x |    0.000     0.001     0.013 ms] substep_c38_0_kernel_6_range_for
+# [  4.99%   0.007 s   6080x |    0.000     0.001     0.013 ms] substep_c38_0_kernel_4_range_for
+# -------------------------------------------------------------------------
+# [100.00%] Total execution time:   0.143 s   number of results: 4
+# =========================================================================

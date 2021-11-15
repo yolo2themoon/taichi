@@ -18,7 +18,6 @@ class EndToEnd:
         self._resualts = {}
 
     def run(self):
-        print(end2end_cases_list)
         for case in self.test_cases:
             print(case.__name__)
             self._resualts[case.__name__] = case(self._arch)

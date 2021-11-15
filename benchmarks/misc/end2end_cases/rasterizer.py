@@ -102,9 +102,8 @@ class TriangleRasterizer:
 
 
 def e2e_rasterizer(test_arch):
-    name = 'rasterizer'
-    basic_repeat_times = 1000
-    arch_repeat_times = 1 if test_arch==ti.cuda else 1
+    basic_repeat_times = 100
+    arch_repeat_times = 10 if test_arch==ti.cuda else 1
 
     tile_size = 8  # Size of a tile
     width, height = 800, 600  # Size of framebuffer
@@ -114,10 +113,8 @@ def e2e_rasterizer(test_arch):
 
     ti.init(kernel_profiler=True, arch=test_arch)
 
-    print('init')
+    print('    initialization ...')
     triangles = TriangleRasterizer(num_triangles,tile_size,width,height,num_samples_per_pixel,num_spp_sqrt)
-    
-    print('set_triangle')
     for i in range(num_triangles):
         triangles.set_triangle(i%num_triangles,
                             ti.Vector(np.random.rand(2) * [width, height]),
@@ -127,13 +124,12 @@ def e2e_rasterizer(test_arch):
                             ti.Vector(np.random.rand(3)),
                             ti.Vector(np.random.rand(3)))
     
-    print('first run')
     triangles.samples.fill(ti.Vector([1.0, 1.0, 1.0]))
     triangles.pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
     triangles.tile_culling()
     triangles.rasterize()
 
-    print('profiling begin ...')
+    print('    profiling begin ...')
     time_in_s = 0.0
     for i in range(arch_repeat_times):
         ti.clear_kernel_profile_info()
@@ -141,7 +137,7 @@ def e2e_rasterizer(test_arch):
             triangles.tile_culling()
             triangles.rasterize()
         time_in_s += ti.kernel_profiler_total_time()
-    print(f'time = {time_in_s}')
+    print(f'    time = {time_in_s}')
     ti.reset()
     return time_in_s
 
