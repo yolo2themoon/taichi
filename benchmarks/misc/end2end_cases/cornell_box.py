@@ -1,7 +1,9 @@
 import numpy as np
-from numpy.lib.function_base import average
+# from numpy.lib.function_base import average
 
 import taichi as ti
+
+# copy from examples/rendering/cornell_box.py
 
 def e2e_cornellbox(test_arch):
     ti.init(kernel_profiler=True, arch=test_arch)
@@ -493,7 +495,7 @@ def e2e_cornellbox(test_arch):
                                            100.0)
     
 
-    print('    initialization ...')
+    print('    initializing ...')
     for i in range(10):
         render()
    

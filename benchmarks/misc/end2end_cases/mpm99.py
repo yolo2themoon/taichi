@@ -2,6 +2,8 @@ import numpy as np
 
 import taichi as ti
 
+# copy from examples/simulation/mpm99.py
+
 def e2e_mpm99(test_arch):
     ti.init(kernel_profiler=True, arch=test_arch)
 
@@ -118,7 +120,7 @@ def e2e_mpm99(test_arch):
             F[i] = ti.Matrix([[1, 0], [0, 1]])
             Jp[i] = 1
 
-    print('    initialization ...')
+    print('    initializing ...')
     innner_iter = int(2e-3 // dt)
     outter_iter = 320
     initialize()

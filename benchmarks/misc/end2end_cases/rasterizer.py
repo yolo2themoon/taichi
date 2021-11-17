@@ -4,6 +4,8 @@ import numpy as np
 
 import taichi as ti
 
+# copy from examples/rendering/rasterizer.py
+
 @ti.data_oriented
 class TriangleRasterizer:
     def __init__(self,num_triangles,tile_size,width,height,num_samples_per_pixel,num_spp_sqrt):
@@ -113,7 +115,7 @@ def e2e_rasterizer(test_arch):
 
     ti.init(kernel_profiler=True, arch=test_arch)
 
-    print('    initialization ...')
+    print('    initializing ...')
     triangles = TriangleRasterizer(num_triangles,tile_size,width,height,num_samples_per_pixel,num_spp_sqrt)
     for i in range(num_triangles):
         triangles.set_triangle(i%num_triangles,
