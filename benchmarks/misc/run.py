@@ -1,8 +1,8 @@
 import os
 import warnings
 
-from membound import MemoryBound
 from end2end import EndToEnd
+from membound import MemoryBound
 from utils import arch_name, datatime_with_format, dump2json
 
 import taichi as ti

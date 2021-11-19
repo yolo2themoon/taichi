@@ -1,15 +1,15 @@
 import numpy as np
-# from numpy.lib.function_base import average
 
 import taichi as ti
 
 # copy from examples/rendering/cornell_box.py
 
+
 def e2e_cornellbox(test_arch):
     ti.init(kernel_profiler=True, arch=test_arch)
     basic_repeat_times = 100
-    arch_repeat_times = 10 if test_arch==ti.cuda else 1
-        
+    arch_repeat_times = 100 if test_arch == ti.cuda else 1
+
     res = (800, 800)
     color_buffer = ti.Vector.field(3, dtype=ti.f32, shape=res)
     count_var = ti.field(ti.i32, shape=(1, ))
@@ -51,11 +51,11 @@ def e2e_cornellbox(test_arch):
     sp1_center = ti.Vector([0.4, 0.225, 1.75])
     sp1_radius = 0.22
 
-
     def make_box_transform_matrices():
         rad = np.pi / 8.0
         c, s = np.cos(rad), np.sin(rad)
-        rot = np.array([[c, 0, s, 0], [0, 1, 0, 0], [-s, 0, c, 0], [0, 0, 0, 1]])
+        rot = np.array([[c, 0, s, 0], [0, 1, 0, 0], [-s, 0, c, 0],
+                        [0, 0, 0, 1]])
         translate = np.array([
             [1, 0, 0, -0.7],
             [0, 1, 0, 0],
@@ -67,18 +67,15 @@ def e2e_cornellbox(test_arch):
         m_inv_t = np.transpose(m_inv)
         return ti.Matrix(m_inv), ti.Matrix(m_inv_t)
 
-
     # left box
     box_min = ti.Vector([0.0, 0.0, 0.0])
     box_max = ti.Vector([0.55, 1.1, 0.55])
     box_m_inv, box_m_inv_t = make_box_transform_matrices()
 
-
     @ti.func
     def reflect(d, n):
         # Assuming |d| and |n| are normalized
         return d - 2.0 * d.dot(n) * n
-
 
     @ti.func
     def refract(d, n, ni_over_nt):
@@ -93,7 +90,6 @@ def e2e_cornellbox(test_arch):
             rd *= 0.0
         return has_r, rd
 
-
     @ti.func
     def mat_mul_point(m, p):
         hp = ti.Vector([p[0], p[1], p[2], 1.0])
@@ -101,13 +97,11 @@ def e2e_cornellbox(test_arch):
         hp /= hp[3]
         return ti.Vector([hp[0], hp[1], hp[2]])
 
-
     @ti.func
     def mat_mul_vec(m, v):
         hv = ti.Vector([v[0], v[1], v[2], 0.0])
         hv = m @ hv
         return ti.Vector([hv[0], hv[1], hv[2]])
-
 
     @ti.func
     def intersect_sphere(pos, d, center, radius):
@@ -146,7 +140,6 @@ def e2e_cornellbox(test_arch):
 
         return dist, hit_pos
 
-
     @ti.func
     def intersect_plane(pos, d, pt_on_plane, norm):
         dist = inf
@@ -156,7 +149,6 @@ def e2e_cornellbox(test_arch):
             dist = norm.dot(pt_on_plane - pos) / denom
             hit_pos = pos + d * dist
         return dist, hit_pos
-
 
     @ti.func
     def intersect_aabb(box_min, box_max, o, d):
@@ -194,14 +186,13 @@ def e2e_cornellbox(test_arch):
                     near_norm[i] = -1 + near_is_max * 2
         return intersect, near_t, far_t, near_norm
 
-
     @ti.func
     def intersect_aabb_transformed(box_min, box_max, o, d):
         # Transform the ray to the box's local space
         obj_o = mat_mul_point(box_m_inv, o)
         obj_d = mat_mul_vec(box_m_inv, d)
-        intersect, near_t, _, near_norm = intersect_aabb(box_min, box_max, obj_o,
-                                                        obj_d)
+        intersect, near_t, _, near_norm = intersect_aabb(
+            box_min, box_max, obj_o, obj_d)
         if intersect and 0 < near_t:
             # Transform the normal in the box's local space to world space
             near_norm = mat_mul_vec(box_m_inv_t, near_norm)
@@ -209,11 +200,10 @@ def e2e_cornellbox(test_arch):
             intersect = 0
         return intersect, near_t, near_norm
 
-
     @ti.func
     def intersect_light(pos, d, tmax):
         hit, t, far_t, near_norm = intersect_aabb(light_min_pos, light_max_pos,
-                                                pos, d)
+                                                  pos, d)
         if hit and 0 < t < tmax:
             hit = 1
         else:
@@ -221,21 +211,21 @@ def e2e_cornellbox(test_arch):
             t = inf
         return hit, t
 
-
     @ti.func
     def intersect_scene(pos, ray_dir):
         closest, normal = inf, ti.Vector.zero(ti.f32, 3)
         c, mat = ti.Vector.zero(ti.f32, 3), mat_none
 
         # right near sphere
-        cur_dist, hit_pos = intersect_sphere(pos, ray_dir, sp1_center, sp1_radius)
+        cur_dist, hit_pos = intersect_sphere(pos, ray_dir, sp1_center,
+                                             sp1_radius)
         if 0 < cur_dist < closest:
             closest = cur_dist
             normal = (hit_pos - sp1_center).normalized()
             c, mat = ti.Vector([1.0, 1.0, 1.0]), mat_glass
         # left box
-        hit, cur_dist, pnorm = intersect_aabb_transformed(box_min, box_max, pos,
-                                                        ray_dir)
+        hit, cur_dist, pnorm = intersect_aabb_transformed(
+            box_min, box_max, pos, ray_dir)
         if hit and 0 < cur_dist < closest:
             closest = cur_dist
             normal = pnorm
@@ -243,8 +233,8 @@ def e2e_cornellbox(test_arch):
 
         # left
         pnorm = ti.Vector([1.0, 0.0, 0.0])
-        cur_dist, _ = intersect_plane(pos, ray_dir, ti.Vector([-1.1, 0.0, 0.0]),
-                                    pnorm)
+        cur_dist, _ = intersect_plane(pos, ray_dir, ti.Vector([-1.1, 0.0,
+                                                               0.0]), pnorm)
         if 0 < cur_dist < closest:
             closest = cur_dist
             normal = pnorm
@@ -252,7 +242,7 @@ def e2e_cornellbox(test_arch):
         # right
         pnorm = ti.Vector([-1.0, 0.0, 0.0])
         cur_dist, _ = intersect_plane(pos, ray_dir, ti.Vector([1.1, 0.0, 0.0]),
-                                    pnorm)
+                                      pnorm)
         if 0 < cur_dist < closest:
             closest = cur_dist
             normal = pnorm
@@ -261,7 +251,7 @@ def e2e_cornellbox(test_arch):
         gray = ti.Vector([0.93, 0.93, 0.93])
         pnorm = ti.Vector([0.0, 1.0, 0.0])
         cur_dist, _ = intersect_plane(pos, ray_dir, ti.Vector([0.0, 0.0, 0.0]),
-                                    pnorm)
+                                      pnorm)
         if 0 < cur_dist < closest:
             closest = cur_dist
             normal = pnorm
@@ -269,7 +259,7 @@ def e2e_cornellbox(test_arch):
         # top
         pnorm = ti.Vector([0.0, -1.0, 0.0])
         cur_dist, _ = intersect_plane(pos, ray_dir, ti.Vector([0.0, 2.0, 0.0]),
-                                    pnorm)
+                                      pnorm)
         if 0 < cur_dist < closest:
             closest = cur_dist
             normal = pnorm
@@ -277,7 +267,7 @@ def e2e_cornellbox(test_arch):
         # far
         pnorm = ti.Vector([0.0, 0.0, 1.0])
         cur_dist, _ = intersect_plane(pos, ray_dir, ti.Vector([0.0, 0.0, 0.0]),
-                                    pnorm)
+                                      pnorm)
         if 0 < cur_dist < closest:
             closest = cur_dist
             normal = pnorm
@@ -292,7 +282,6 @@ def e2e_cornellbox(test_arch):
 
         return closest, normal, c, mat
 
-
     @ti.func
     def visible_to_light(pos, ray_dir):
         # eps*ray_dir is easy way to prevent rounding error
@@ -301,11 +290,9 @@ def e2e_cornellbox(test_arch):
         a, b, c, mat = intersect_scene(pos + eps * ray_dir, ray_dir)
         return mat == mat_light
 
-
     @ti.func
     def dot_or_zero(n, l):
         return max(0.0, n.dot(l))
-
 
     @ti.func
     def mis_power_heuristic(pf, pg):
@@ -313,7 +300,6 @@ def e2e_cornellbox(test_arch):
         f = pf**2
         g = pg**2
         return f / (f + g)
-
 
     @ti.func
     def compute_area_light_pdf(pos, ray_dir):
@@ -327,11 +313,9 @@ def e2e_cornellbox(test_arch):
                 pdf = dist_sqr / (light_area * l_cos)
         return pdf
 
-
     @ti.func
     def compute_brdf_pdf(normal, sample_dir):
         return dot_or_zero(normal, sample_dir) / np.pi
-
 
     @ti.func
     def sample_area_light(hit_pos, pos_normal):
@@ -340,7 +324,6 @@ def e2e_cornellbox(test_arch):
         z = ti.random() * light_z_range + light_z_min_pos
         on_light_pos = ti.Vector([x, light_y_pos, z])
         return (on_light_pos - hit_pos).normalized()
-
 
     @ti.func
     def sample_brdf(normal):
@@ -366,7 +349,6 @@ def e2e_cornellbox(test_arch):
         xy = (u * costt + v * sintt) * r
         zlen = ti.sqrt(max(0.0, 1.0 - xy.dot(xy)))
         return xy + zlen * normal
-
 
     @ti.func
     def sample_direct_light(hit_pos, hit_normal, hit_color):
@@ -400,13 +382,11 @@ def e2e_cornellbox(test_arch):
 
         return direct_li
 
-
     @ti.func
     def schlick(cos, eta):
         r0 = (1.0 - eta) / (1.0 + eta)
         r0 = r0 * r0
         return r0 + (1 - r0) * ((1.0 - cos)**5)
-
 
     @ti.func
     def sample_ray_dir(indir, normal, hit_pos, mat):
@@ -437,10 +417,8 @@ def e2e_cornellbox(test_arch):
                 u = refr_dir
         return u.normalized(), pdf
 
-
     stratify_res = 5
     inv_stratify = 1.0 / 5.0
-
 
     @ti.kernel
     def render():
@@ -450,10 +428,12 @@ def e2e_cornellbox(test_arch):
             cur_iter = count_var[0]
             str_x, str_y = (cur_iter / stratify_res), (cur_iter % stratify_res)
             ray_dir = ti.Vector([
-                (2 * fov * (u + (str_x + ti.random()) * inv_stratify) / res[1] -
-                fov * aspect_ratio - 1e-5),
-                (2 * fov * (v + (str_y + ti.random()) * inv_stratify) / res[1] -
-                fov - 1e-5),
+                (2 * fov * (u +
+                            (str_x + ti.random()) * inv_stratify) / res[1] -
+                 fov * aspect_ratio - 1e-5),
+                (2 * fov * (v +
+                            (str_y + ti.random()) * inv_stratify) / res[1] -
+                 fov - 1e-5),
                 -1.0,
             ])
             ray_dir = ray_dir.normalized()
@@ -463,7 +443,8 @@ def e2e_cornellbox(test_arch):
 
             depth = 0
             while depth < max_ray_depth:
-                closest, hit_normal, hit_color, mat = intersect_scene(pos, ray_dir)
+                closest, hit_normal, hit_color, mat = intersect_scene(
+                    pos, ray_dir)
                 if mat == mat_none:
                     break
 
@@ -477,7 +458,8 @@ def e2e_cornellbox(test_arch):
                         hit_pos, hit_normal, hit_color)
 
                 depth += 1
-                ray_dir, pdf = sample_ray_dir(ray_dir, hit_normal, hit_pos, mat)
+                ray_dir, pdf = sample_ray_dir(ray_dir, hit_normal, hit_pos,
+                                              mat)
                 pos = hit_pos + 1e-4 * ray_dir
                 if mat == mat_lambertian:
                     throughput *= lambertian_brdf * hit_color * dot_or_zero(
@@ -487,18 +469,16 @@ def e2e_cornellbox(test_arch):
             color_buffer[u, v] += acc_color
         count_var[0] = (count_var[0] + 1) % (stratify_res * stratify_res)
 
-
     @ti.kernel
     def tonemap(accumulated: ti.f32):
         for i, j in tonemapped_buffer:
-            tonemapped_buffer[i, j] = ti.sqrt(color_buffer[i, j] / accumulated *
-                                           100.0)
-    
+            tonemapped_buffer[i, j] = ti.sqrt(color_buffer[i, j] /
+                                              accumulated * 100.0)
 
     print('    initializing ...')
-    for i in range(10):
+    for i in range(10 * arch_repeat_times):
         render()
-   
+
     print('    profiling begin ...')
     time_in_s = 0.0
     for i in range(arch_repeat_times):
@@ -506,9 +486,13 @@ def e2e_cornellbox(test_arch):
         for j in range(basic_repeat_times):
             render()
         time_in_s += ti.kernel_profiler_total_time()
-    print(f'    time = {time_in_s}')
+    print(f'    time_in_s = {time_in_s}')
     ti.reset()
-    return time_in_s
+    ret_dict = {}
+    ret_dict['case_name'] = 'cornellbox'
+    ret_dict['repeat_times'] = arch_repeat_times * basic_repeat_times
+    ret_dict['total_elapsed_time_ms'] = time_in_s * 1000
+    return ret_dict
 
 
 if __name__ == '__main__':

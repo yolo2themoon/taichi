@@ -6,17 +6,20 @@ import taichi as ti
 
 # copy from examples/rendering/rasterizer.py
 
+
 @ti.data_oriented
 class TriangleRasterizer:
-    def __init__(self,num_triangles,tile_size,width,height,num_samples_per_pixel,num_spp_sqrt):
+    def __init__(self, num_triangles, tile_size, width, height,
+                 num_samples_per_pixel, num_spp_sqrt):
         self.num_triangles = num_triangles
         self.tile_size = tile_size
         self.num_samples_per_pixel = num_samples_per_pixel
         self.num_spp_sqrt = num_spp_sqrt
-        
+
         self.samples = ti.Vector.field(3,
-                            dtype=ti.f32,
-                            shape=(width, height, num_spp_sqrt, num_spp_sqrt))
+                                       dtype=ti.f32,
+                                       shape=(width, height, num_spp_sqrt,
+                                              num_spp_sqrt))
         self.pixels = ti.Vector.field(3, dtype=ti.f32, shape=(width, height))
 
         self.A = ti.Vector.field(2, dtype=ti.f32)
@@ -26,8 +29,10 @@ class TriangleRasterizer:
         self.c1 = ti.Vector.field(3, dtype=ti.f32)
         self.c2 = ti.Vector.field(3, dtype=ti.f32)
 
-        self.vertices = ti.root.dense(ti.i, num_triangles).place(self.A, self.B, self.C)
-        self.colors = ti.root.dense(ti.i, num_triangles).place(self.c0, self.c1, self.c2)
+        self.vertices = ti.root.dense(ti.i, num_triangles).place(
+            self.A, self.B, self.C)
+        self.colors = ti.root.dense(ti.i, num_triangles).place(
+            self.c0, self.c1, self.c2)
 
         # Tile-based culling
         self.block_num_triangles = ti.field(dtype=ti.i32,
@@ -35,7 +40,8 @@ class TriangleRasterizer:
                                                    height // tile_size))
         self.block_indicies = ti.field(dtype=ti.i32,
                                        shape=(width // tile_size,
-                                              height // tile_size, num_triangles))
+                                              height // tile_size,
+                                              num_triangles))
 
     def set_triangle(self, i, v0, v1, v2, c0, c1, c2):
         self.A[i] = v0
@@ -66,7 +72,8 @@ class TriangleRasterizer:
         for i, j in self.block_num_triangles:
             idx = 0
             tile_min = ti.Vector([i * self.tile_size, j * self.tile_size])
-            tile_max = ti.Vector([(i + 1) * self.tile_size, (j + 1) * self.tile_size])
+            tile_max = ti.Vector([(i + 1) * self.tile_size,
+                                  (j + 1) * self.tile_size])
             for t in range(self.num_triangles):
                 A, B, C = self.A[t], self.B[t], self.C[t]
                 tri_min = ti.min(A, ti.min(B, C))
@@ -81,11 +88,13 @@ class TriangleRasterizer:
         for i, j in self.pixels:
             for k in range(self.block_num_triangles[i // self.tile_size,
                                                     j // self.tile_size]):
-                idx = self.block_indicies[i // self.tile_size, j // self.tile_size, k]
+                idx = self.block_indicies[i // self.tile_size,
+                                          j // self.tile_size, k]
                 A, B, C = self.A[idx], self.B[idx], self.C[idx]
                 c0, c1, c2 = self.c0[idx], self.c1[idx], self.c2[idx]
 
-                for subi, subj in ti.ndrange(self.num_spp_sqrt, self.num_spp_sqrt):
+                for subi, subj in ti.ndrange(self.num_spp_sqrt,
+                                             self.num_spp_sqrt):
                     P = ti.Vector([
                         i + (subi + 0.5) / self.num_spp_sqrt,
                         j + (subj + 0.5) / self.num_spp_sqrt
@@ -105,7 +114,7 @@ class TriangleRasterizer:
 
 def e2e_rasterizer(test_arch):
     basic_repeat_times = 100
-    arch_repeat_times = 10 if test_arch==ti.cuda else 1
+    arch_repeat_times = 10 if test_arch == ti.cuda else 1
 
     tile_size = 8  # Size of a tile
     width, height = 800, 600  # Size of framebuffer
@@ -116,16 +125,17 @@ def e2e_rasterizer(test_arch):
     ti.init(kernel_profiler=True, arch=test_arch)
 
     print('    initializing ...')
-    triangles = TriangleRasterizer(num_triangles,tile_size,width,height,num_samples_per_pixel,num_spp_sqrt)
+    triangles = TriangleRasterizer(num_triangles, tile_size, width, height,
+                                   num_samples_per_pixel, num_spp_sqrt)
     for i in range(num_triangles):
-        triangles.set_triangle(i%num_triangles,
-                            ti.Vector(np.random.rand(2) * [width, height]),
-                            ti.Vector(np.random.rand(2) * [width, height]),
-                            ti.Vector(np.random.rand(2) * [width, height]),
-                            ti.Vector(np.random.rand(3)),
-                            ti.Vector(np.random.rand(3)),
-                            ti.Vector(np.random.rand(3)))
-    
+        triangles.set_triangle(i % num_triangles,
+                               ti.Vector(np.random.rand(2) * [width, height]),
+                               ti.Vector(np.random.rand(2) * [width, height]),
+                               ti.Vector(np.random.rand(2) * [width, height]),
+                               ti.Vector(np.random.rand(3)),
+                               ti.Vector(np.random.rand(3)),
+                               ti.Vector(np.random.rand(3)))
+
     triangles.samples.fill(ti.Vector([1.0, 1.0, 1.0]))
     triangles.pixels.fill(ti.Vector([1.0, 1.0, 1.0]))
     triangles.tile_culling()
@@ -139,9 +149,13 @@ def e2e_rasterizer(test_arch):
             triangles.tile_culling()
             triangles.rasterize()
         time_in_s += ti.kernel_profiler_total_time()
-    print(f'    time = {time_in_s}')
+    print(f'    time_in_s = {time_in_s}')
     ti.reset()
-    return time_in_s
+    ret_dict = {}
+    ret_dict['case_name'] = 'rasterizer'
+    ret_dict['repeat_times'] = arch_repeat_times * basic_repeat_times
+    ret_dict['total_elapsed_time_ms'] = time_in_s * 1000
+    return ret_dict
 
 
 if __name__ == '__main__':
