@@ -6,7 +6,7 @@ import taichi as ti
 class BenchmarkItem:
     def __init__(self):
         self._name = 'item'
-        self._items = {}  
+        self._items = {}
         # {tag: {impl: xxx, ...}}
 
     def get(self):
